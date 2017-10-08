@@ -7,9 +7,9 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
-using System.Dynamic;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace Crawl
 {
@@ -25,13 +25,13 @@ namespace Crawl
         [Fact]
         public async void RunAsync()
         {
-            for (int i = 1; i <= 5; i++)
+            for (int i = 1; i <= 7537; i++)
             {
-                var url = string.Format("https://batdongsan.com.vn/ban-nha-mat-pho/p{0}", i);
+                var url = string.Format("https://batdongsan.com.vn/nha-dat-ban/p{0}", i);
                 var text = await GetResponseAsync(url);
                 var htmlDocument = new HtmlDocument();
                 htmlDocument.LoadHtml(text);
-                
+
                 var ids = htmlDocument.DocumentNode
                                       .Descendants()
                                       .Where(x => x.Name == "div" && x.Attributes.Contains("class") && x.Attributes["class"].Value.Contains("search-productItem"))
@@ -40,7 +40,7 @@ namespace Crawl
                                       .Select(x => x.Substring(x.LastIndexOf('-')))
                                       .ToList();
 
-                foreach(var id in ids)
+                foreach (var id in ids)
                 {
                     var result = new Dictionary<string, string>();
                     var path = string.Format("{0}/{1}", url, id);
@@ -51,7 +51,7 @@ namespace Crawl
                     var title = descendants
                                            .FirstOrDefault(x => x.Name == "div" && x.Attributes.Contains("class") && x.Attributes["class"].Value == ("pm-title"))
                                            .Descendants()
-                                           .FirstOrDefault(x => x.Name == "h1" && x.Attributes.Contains("itemprop") && x.Attributes["itemprop"].Value== ("name"))
+                                           .FirstOrDefault(x => x.Name == "h1" && x.Attributes.Contains("itemprop") && x.Attributes["itemprop"].Value == ("name"))
                                            .InnerText.Trim().Replace("\r\n", "");
 
                     var description = descendants
@@ -76,12 +76,12 @@ namespace Crawl
 
                     var data = tableDetail.FirstOrDefault().Descendants().Where(x => x.Attributes.Contains("class") && x.Attributes["class"].Value == "row").Concat(contacts);
 
-                    result.Add("crawl_id", id);
+                    result.Add("crawl_id", id.Replace("-pr", ""));
                     result.Add("title", title);
                     result.Add("description", description);
                     result.Add("price", price);
                     result.Add("area", area);
-                    foreach(var datum in data)
+                    foreach (var datum in data)
                     {
                         var key = datum.Descendants()
                                        .FirstOrDefault(x => x.Attributes.Contains("class") && x.Attributes["class"].Value.Contains("left"))
@@ -107,10 +107,21 @@ namespace Crawl
                         }
                     }
 
-                    var jsonObject = Newtonsoft.Json.JsonConvert.SerializeObject(result, Formatting.Indented);
+                    string jsonObject = JsonConvert.SerializeObject(result, Formatting.Indented);
+                    this.WriteFile("E:\\git\\Personal\\crawling\\Data\\BatDongSan.json", jsonObject);
                     _output.WriteLine(jsonObject);
                 }
             }
+        }
+
+        private void WriteFile(string path, string data)
+        {
+            String filepath = path;
+            FileStream fs = new FileStream(filepath, FileMode.Append);  
+            StreamWriter sWriter = new StreamWriter(fs, Encoding.UTF8);
+            sWriter.WriteLine(data);
+            sWriter.Flush();
+            fs.Close();
         }
 
         private static async Task<string> GetResponseAsync(string url)
