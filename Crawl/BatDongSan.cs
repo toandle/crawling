@@ -1,15 +1,10 @@
 ﻿using HtmlAgilityPack;
-using System;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using System.Text;
+using Crawl.Helpers;
 
 namespace Crawl
 {
@@ -28,7 +23,7 @@ namespace Crawl
             for (int i = 1; i <= 7537; i++)
             {
                 var url = string.Format("https://batdongsan.com.vn/nha-dat-ban/p{0}", i);
-                var text = await GetResponseAsync(url);
+                var text = await HttpHelper.GetResponseAsync(url);
                 var htmlDocument = new HtmlDocument();
                 htmlDocument.LoadHtml(text);
 
@@ -44,7 +39,7 @@ namespace Crawl
                 {
                     var result = new Dictionary<string, string>();
                     var path = string.Format("{0}/{1}", url, id);
-                    var content = await GetResponseAsync(path);
+                    var content = await HttpHelper.GetResponseAsync(path);
                     htmlDocument.LoadHtml(content);
                     var descendants = htmlDocument.DocumentNode.Descendants();
 
@@ -108,39 +103,9 @@ namespace Crawl
                     }
 
                     string jsonObject = JsonConvert.SerializeObject(result, Formatting.Indented);
-                    this.WriteFile("E:\\git\\Personal\\crawling\\Data\\BatDongSan.json", jsonObject);
+                    FileHelper.WriteFile("E:\\git\\Personal\\crawling\\Data\\BatDongSan.json", jsonObject);
                     _output.WriteLine(jsonObject);
                 }
-            }
-        }
-
-        private void WriteFile(string path, string data)
-        {
-            String filepath = path;
-            FileStream fs = new FileStream(filepath, FileMode.Append);  
-            StreamWriter sWriter = new StreamWriter(fs, Encoding.UTF8);
-            sWriter.WriteLine(data);
-            sWriter.Flush();
-            fs.Close();
-        }
-
-        private static async Task<string> GetResponseAsync(string url)
-        {
-            var httpClient = new HttpClient();
-
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:19.0) Gecko/20100101 Firefox/19.0");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Charset", "ISO-8859-1");
-
-            var response = await httpClient.GetAsync(new Uri(url)).ConfigureAwait(false);
-
-            response.EnsureSuccessStatusCode();
-            using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-            using (var decompressedStream = new GZipStream(responseStream, CompressionMode.Decompress))
-            using (var streamReader = new StreamReader(decompressedStream))
-            {
-                return await streamReader.ReadToEndAsync().ConfigureAwait(false);
             }
         }
     }
